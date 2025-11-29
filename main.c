@@ -1,4 +1,3 @@
-#define _CRT_SECURE_NO_WARNINGS
 #include <assert.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -6,7 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; int count = strlen(template) + strlen(__func__) + 25 + 1; char message[200]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
+#ifdef NDEBUG
+#ifdef _MSC_VER
+#define _CRT_SECURE_NO_WARNINGS
+#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; char message[200]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
+#else
+#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; int count = strlen(template) + strlen(__func__) + 25 + 1; char message[count]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
+#endif
+#else
+#define assert_not_null_parameter(pointer) ((void)0)
+#endif
 
 // ----------------------------------- LIST START ----------------------------
 // on 64 bit systems
