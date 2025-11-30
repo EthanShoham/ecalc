@@ -5,12 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef NDEBUG
+#ifndef NDEBUG
 #ifdef _MSC_VER
+#define CONST_BUFFER_SIZE 200
 #define _CRT_SECURE_NO_WARNINGS
-#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; char message[200]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
+#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; char message[CONST_BUFFER_SIZE]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
 #else
-#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; int count = strlen(template) + strlen(__func__) + 25 + 1; char message[count]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
+#define RESERVE_BUFFER_SIZE 26
+#define assert_not_null_parameter(pointer) do{ const char* template = "NULL pointer parameter was passed to: %s on line: %d"; int count = strlen(template) + strlen(__func__) + RESERVE_BUFFER_SIZE; char message[count]; sprintf(message, template, __func__, __LINE__); assert(pointer && message); }while(0)
 #endif
 #else
 #define assert_not_null_parameter(pointer) ((void)0)
@@ -53,7 +55,7 @@ void *list_resize(void *list, size_t new_capacity) {
   assert_not_null_parameter(list);
   list_header *header = ((list_header *)list) - 1;
   if (header->capacity == new_capacity) {
-    return header;
+    return header + 1;
   }
 
   header->capacity = new_capacity;
@@ -83,14 +85,15 @@ size_t list_capacity(void *list) {
   return header->capacity;
 }
 
-void *list_add(void *list, void *item_ref) {
+void *list_add(void *list,const void *item_ref) {
   assert_not_null_parameter(list);
   list_header *header = ((list_header *)list) - 1;
 
   if (header->count < header->capacity) {
     void *dest = (char*)list + (header->count * header->item_size);
     if (memcpy_s(dest, header->item_size, item_ref, header->item_size) != 0) {
-      return NULL;
+        fprintf(stderr ,"Failed memcpy to the buffer in list_add\n");
+        exit(1);
     }
 
     header->count++;
@@ -107,7 +110,7 @@ void *list_add(void *list, void *item_ref) {
 
   if(memcpy_s(dest, new_header->item_size, item_ref, new_header->item_size) !=
       0) {
-        printf("Failed memcpy to the new buffer in list_add");
+        fprintf(stderr ,"Failed memcpy to the new buffer in list_add\n");
         exit(1);
   }
 
@@ -119,18 +122,25 @@ void *list_add(void *list, void *item_ref) {
 
 // ----------------------------------- CHAR READER STRAT -------------------------
 
+#define CHAR_READER_INIT_BUFFER_SIZE 10
+
 typedef struct CharReader {
   size_t current_buffer_index;
   size_t current_read_position;
   char const **buffers_list;
 } CharReader;
 
-void char_reader_init(CharReader *reader) {
+bool char_reader_init(CharReader *reader) {
   assert_not_null_parameter(reader);
   reader->current_read_position = 0;
   reader->current_buffer_index = 0;
 
-  reader->buffers_list = list_alloc(sizeof(char *), 10);
+  reader->buffers_list = list_alloc(sizeof(char *), CHAR_READER_INIT_BUFFER_SIZE);
+  if(reader->buffers_list == NULL){
+    return false;
+  }
+
+  return true;
 }
 
 void char_reader_destroy(CharReader *reader) {
@@ -143,6 +153,10 @@ void char_reader_destroy(CharReader *reader) {
 
 char char_reader_read(CharReader *reader) {
   assert_not_null_parameter(reader);
+  if(list_count(reader->buffers_list) == 0) {
+    return '\0';
+  }
+
   char current_char = reader->buffers_list[reader->current_buffer_index]
                                           [reader->current_read_position];
   while (current_char == '\0') {
@@ -179,12 +193,12 @@ bool char_reader_add(CharReader *reader, const char *str) {
 
 int main(int argc, const char *argv[]) {
   CharReader reader = {0};
-  char_reader_init(&reader);
+  assert(char_reader_init(&reader));
 
   for (size_t i = 0; i < argc; i++) {
-    char_reader_add(&reader, argv[i]);
+    assert(char_reader_add(&reader, argv[i]));
     if(i < argc - 1) {
-      char_reader_add(&reader, " ");
+      assert(char_reader_add(&reader, " "));
     }
   }
 
@@ -193,9 +207,10 @@ int main(int argc, const char *argv[]) {
     putchar(current);
   }
 
+  // test EOF reads
   for (size_t i = 0; i < 5; i++)
   {
-      char current = char_reader_read(&reader);
+    char_reader_read(&reader);
   }
 
   char_reader_destroy(&reader);
