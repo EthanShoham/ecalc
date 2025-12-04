@@ -10,6 +10,8 @@ void token_list_distroy(TokenList *token_list) {
 
 Token token_list_get_token_at(TokenList *token_list, size_t index) {
   assert(token_list && "token_list_get_token_at(): arg token_list was null");
+  assert(index < list_get_count(token_list->_inner_token_list) &&
+         "token_list_get_token_at(): index out of bounds");
   return token_list->_inner_token_list[index];
 }
 

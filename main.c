@@ -30,7 +30,7 @@ int main(int argc, const char *argv[]) {
   CharReader reader = {0};
   char_reader_init(&reader);
 
-  for (size_t i = 1; i < argc; i++) {
+  for (int i = 1; i < argc; i++) {
     assert(char_reader_add(&reader, argv[i]));
     if (i < argc - 1) {
       assert(char_reader_add(&reader, " "));
@@ -38,7 +38,7 @@ int main(int argc, const char *argv[]) {
   }
 
   TokenList tokens = lex_char_reader(&reader);
-  for (int i = 0; i < token_list_get_count(&tokens); i++) {
+  for (size_t i = 0; i < token_list_get_count(&tokens); i++) {
     Token token = token_list_get_token_at(&tokens, i);
     printf("{ type:\"%s\", lexeme:\"%s\" }\n", token_type_names[token.type],
            token.lexeme ? token.lexeme : "[NULL]");

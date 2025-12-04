@@ -4,6 +4,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 typedef struct Lexer {
   list_(Token) token_list;
@@ -22,7 +23,7 @@ typedef enum State {
   DIVIDE,   // /
   MODULO,   // %
   POWER,    // ^ **
-  EXPONENT, // 'eE' right after a number, expect another number after
+  POTENTIAL_EXPONENT, // 'eE' right after a number, expect another number after
   LPAREN,   // (
   RPAREN,   // )
   LBRACKET, // [
@@ -63,7 +64,7 @@ static TokenList _lexer_destroy(Lexer *this) {
   return token_list;
 }
 
-static void _lexer_add_char(Lexer *this, char c) {
+static void _lexer_add_char(Lexer *this, unsigned char c) {
   assert(this && "_lexer_add_token(): arg this was null");
   char *new_container = list_add(this->lexemes_container, &c);
   if (new_container == NULL) {
@@ -102,8 +103,8 @@ static void _lexer_cut_token(Lexer *this, TokenType cut_type) {
   this->current_lexeme_start_index = list_get_count(this->lexemes_container);
 }
 
-static State _lexer_start(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_start(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     return START;
   }
 
@@ -159,8 +160,8 @@ static State _lexer_start(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_number(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_number(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     _lexer_cut_token(this, NUMBER_TOKEN);
     return START;
   }
@@ -178,7 +179,7 @@ static State _lexer_number(Lexer *this, char c) {
   bool is_identifier =
       (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c == '_');
   if (is_identifier) {
-    return (c == 'e' || c == 'E') ? EXPONENT : IDENTIFIER;
+    return (c == 'e' || c == 'E') ? POTENTIAL_EXPONENT : IDENTIFIER;
   }
   if (c == '+') {
     return PLUS;
@@ -220,8 +221,8 @@ static State _lexer_number(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_decimal(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_decimal(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     _lexer_cut_token(this, NUMBER_TOKEN);
     return START;
   }
@@ -238,7 +239,7 @@ static State _lexer_decimal(Lexer *this, char c) {
   bool is_identifier =
       (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c == '_');
   if (is_identifier) {
-    return (c == 'e' || c == 'E') ? EXPONENT : IDENTIFIER;
+    return (c == 'e' || c == 'E') ? POTENTIAL_EXPONENT : IDENTIFIER;
   }
   if (c == '+') {
     return PLUS;
@@ -280,8 +281,8 @@ static State _lexer_decimal(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_identifier(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_identifier(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     _lexer_cut_token(this, IDENTIFIER_TOKEN);
     return START;
   }
@@ -341,10 +342,10 @@ static State _lexer_identifier(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_plus(Lexer *this, char c) {
+static State _lexer_plus(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, PLUS_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -400,10 +401,10 @@ static State _lexer_plus(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_minus(Lexer *this, char c) {
+static State _lexer_minus(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, MINUS_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -459,8 +460,8 @@ static State _lexer_minus(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_multiply(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_multiply(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     _lexer_cut_token(this, MULTIPLY_TOKEN);
     return START;
   }
@@ -519,8 +520,8 @@ static State _lexer_multiply(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_exponent(Lexer *this, char c) {
-  if (c == ' ') {
+static State _lexer_potential_exponent(Lexer *this, unsigned char c) {
+  if (isspace(c)) {
     _lexer_cut_token(this, IDENTIFIER_TOKEN);
     return START;
   }
@@ -593,10 +594,10 @@ static State _lexer_exponent(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_divide(Lexer *this, char c) {
+static State _lexer_divide(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, DIVIDE_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -652,10 +653,10 @@ static State _lexer_divide(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_modulo(Lexer *this, char c) {
+static State _lexer_modulo(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, MODULO_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -711,10 +712,10 @@ static State _lexer_modulo(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_power(Lexer *this, char c) {
+static State _lexer_power(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, POWER_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -770,10 +771,10 @@ static State _lexer_power(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_lparen(Lexer *this, char c) {
+static State _lexer_lparen(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, LPAREN_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -829,10 +830,10 @@ static State _lexer_lparen(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_rparen(Lexer *this, char c) {
+static State _lexer_rparen(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, RPAREN_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -888,10 +889,10 @@ static State _lexer_rparen(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_lbracket(Lexer *this, char c) {
+static State _lexer_lbracket(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, LBRACKET_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -947,10 +948,10 @@ static State _lexer_lbracket(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_rbracket(Lexer *this, char c) {
+static State _lexer_rbracket(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, RBRACKET_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -1006,10 +1007,10 @@ static State _lexer_rbracket(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_lbrace(Lexer *this, char c) {
+static State _lexer_lbrace(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, LBRACE_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -1065,10 +1066,10 @@ static State _lexer_lbrace(Lexer *this, char c) {
   return START;
 }
 
-static State _lexer_rbrace(Lexer *this, char c) {
+static State _lexer_rbrace(Lexer *this, unsigned char c) {
   _lexer_cut_token(this, RBRACE_TOKEN);
 
-  if (c == ' ') {
+  if (isspace(c)) {
     return START;
   }
 
@@ -1124,13 +1125,13 @@ static State _lexer_rbrace(Lexer *this, char c) {
   return START;
 }
 
-static State (*_lexer_state_functions[])(Lexer *this, char c) = {
+static State (*_lexer_state_functions[])(Lexer *this, unsigned char c) = {
     [START] = _lexer_start,       [NUMBER] = _lexer_number,
     [DECIMAL] = _lexer_decimal,   [IDENTIFIER] = _lexer_identifier,
     [PLUS] = _lexer_plus,         [MINUS] = _lexer_minus,
     [MULTIPLY] = _lexer_multiply, [DIVIDE] = _lexer_divide,
     [MODULO] = _lexer_modulo,     [POWER] = _lexer_power,
-    [EXPONENT] = _lexer_exponent, [LPAREN] = _lexer_lparen,
+    [POTENTIAL_EXPONENT] = _lexer_potential_exponent, [LPAREN] = _lexer_lparen,
     [RPAREN] = _lexer_rparen,     [LBRACKET] = _lexer_lbracket,
     [RBRACKET] = _lexer_rbracket, [LBRACE] = _lexer_lbrace,
     [RBRACE] = _lexer_rbrace};
@@ -1144,7 +1145,7 @@ TokenList lex_char_reader(CharReader *reader) {
   }
 
   State state = START;
-  for (char c = char_reader_read(reader); c != '\0';
+  for (unsigned char c = char_reader_read(reader); c != '\0';
        c = char_reader_read(reader)) {
     state = _lexer_state_functions[state](&lexer, c);
   }
