@@ -74,13 +74,13 @@ void list_free(void *list) {
   free(header);
 }
 
-size_t list_count(const void *list) {
+size_t list_get_count(const void *list) {
   assert(list && "list_count(): parameter list was null");
   list_header *header = ((list_header *)list) - 1;
   return header->count;
 }
 
-size_t list_capacity(const void *list) {
+size_t list_get_capacity(const void *list) {
   assert(list && "list_capacity(): parameter list was null");
   list_header *header = ((list_header *)list) - 1;
   return header->capacity;
